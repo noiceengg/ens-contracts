@@ -227,6 +227,7 @@ const config = {
   },
   etherscan: {
     apiKey: {
+      mainnet: ETHERSCAN_API_KEY,
       optimismSepolia: ETHERSCAN_API_KEY,
       baseSepolia: ETHERSCAN_API_KEY,
       base: ETHERSCAN_API_KEY,

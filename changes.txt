@@ -1,0 +1,29 @@
+1. Deploy L2 Subdomain Registry
+// ----------------------------
+# This contract manages subdomain registrations on L2.
+bun hh --network base deploy --tags L2SubdomainRegistry
+
+L2SubdomainRegistry deployed to 0x0baDFD4F1967aE53b8CE1EdBa8C3A852bb2a41bb on base
+   (Set L2_REGISTRY_ADDRESS=0x0baDFD4F1967aE53b8CE1EdBa8C3A852bb2a41bb in your .env file)
+
+2. Deploy L1 CCIP Read Resolver
+This contract sits on L1 and points clients to your off-chain gateway.
+set TRUSTED_SIGNER= the sighner address of your L2SubdomainRegistry
+# ----------------------------
+bun hh --network mainnet deploy --tags L2CCIPResolver
+
+# Take note of the deployed L2CCIPResolver address.
+
+3. Configure ENS
+Go to app.ens.domains and set the resolver for your (Edit Profile → Advanced → Set Resolver)
+
+4: Run the Gateway
+
+5: Register a New Subdomain
+# ---------------------------------
+bun hh --network baseSepolia run scripts/register-new-subdomain.ts
+
+6: Test Resolution
+# -----------------------
+test new subdomain (e.g., alice.yourdomain.eth) should now resolve correctly
+

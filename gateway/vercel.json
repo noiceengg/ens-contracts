@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ],
+  "env": {
+    "BASE_RPC_URL": "https://mainnet.base.org",
+    "L2_REGISTRY_ADDRESS": "0xbaFf9FbcaE4197E6A1a44df4a2139212E781c5CB",
+    "GATEWAY_PRIVATE_KEY": "@gateway_private_key",
+    "PORT": "3001"
+  }
+} 
