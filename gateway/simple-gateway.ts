@@ -14,6 +14,11 @@ import {
 import { privateKeyToAccount } from 'viem/accounts'
 import { base } from 'viem/chains'
 import * as dnsPacket from 'dns-packet'
+import path from 'path'
+
+// Load .env file from the project root
+import dotenv from 'dotenv'
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') })
 
 // Environment variables
 const L2_REGISTRY_ADDRESS = process.env.L2_REGISTRY_ADDRESS as Hex
@@ -43,20 +48,60 @@ const L2_REGISTRY_ABI = parseAbi([
 const RESOLVER_MAIN_ABI = parseAbi([
   'function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory)',
 ])
-const RESOLVER_CALL_ABI = parseAbi([
-  'function addr(bytes32 node) view returns (address)',
-  'function addr(bytes32 node, uint256 coinType) view returns (bytes)',
-  'function text(bytes32 node, string key) view returns (string)',
-  'function contenthash(bytes32 node) view returns (bytes)',
-  'function pubkey(bytes32 node) view returns (bytes32, bytes32)',
-])
+const RESOLVER_CALL_ABI = [
+  {
+    "type": "function",
+    "name": "addr",
+    "inputs": [{ "name": "node", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "addr",
+    "inputs": [
+      { "name": "node", "type": "bytes32" },
+      { "name": "coinType", "type": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "bytes" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "text",
+    "inputs": [
+      { "name": "node", "type": "bytes32" },
+      { "name": "key", "type": "string" }
+    ],
+    "outputs": [{ "name": "", "type": "string" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "contenthash",
+    "inputs": [{ "name": "node", "type": "bytes32" }],
+    "outputs": [{ "name": "", "type": "bytes" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pubkey",
+    "inputs": [{ "name": "node", "type": "bytes32" }],
+    "outputs": [
+      { "name": "x", "type": "bytes32" },
+      { "name": "y", "type": "bytes32" }
+    ],
+    "stateMutability": "view"
+  }
+]
 
 /**
+ * @param sender The address of the resolver.
  * @param name The DNS-encoded name.
  * @param data The ABI-encoded calldata for the resolver function (e.g., `addr(bytes32)`).
  * @returns The ABI-encoded signed result for the resolver's callback.
  */
-async function resolveAndSign(name: Hex, data: Hex): Promise<Hex> {
+async function resolveAndSign(sender: Hex, name: Hex, data: Hex): Promise<Hex> {
   console.log(`[GW] Received request for name: ${name}`)
   const decodedName = dnsPacket.name.decode(
     Buffer.from(name.substring(2), 'hex'),
@@ -65,18 +110,24 @@ async function resolveAndSign(name: Hex, data: Hex): Promise<Hex> {
   if (!label) throw new Error('Could not parse label from name')
   console.log(`[GW] Decoded name "${decodedName}" into label: "${label}"`)
 
+  // --- Start of Diagnostic Log ---
+  console.log('[GW] Decoding with ABI:', JSON.stringify(RESOLVER_CALL_ABI, null, 2))
+  // ---  End of Diagnostic Log  ---
+
   const { functionName, args } = decodeFunctionData({
     abi: RESOLVER_CALL_ABI,
     data,
   })
   console.log(`[GW] Decoded inner call: ${functionName}`)
 
-  let result: any
-  let resultAbiType: string
+  if (!args) {
+    throw new Error('Could not decode function arguments.')
+  }
+
   let resultData: Hex
 
   if (functionName === 'addr') {
-    const coinType = args.length > 1 ? args[1] : 60 // Default to ETH coin type (60)
+    const coinType = (args as any[]).length > 1 ? args[1] : 60 // Default to ETH coin type (60)
 
     // Only resolve for ETH (coin type 60)
     if (coinType === 60) {
@@ -96,7 +147,7 @@ async function resolveAndSign(name: Hex, data: Hex): Promise<Hex> {
       resultData = encodeAbiParameters(parseAbiParameters(['bytes']), ['0x'])
     }
   } else if (functionName === 'text') {
-    const [_node, key] = args
+    const [_node, key] = args as [string, string]
     console.log(`[GW] Calling L2 registry for text record "${key}"...`)
     const textResult = await baseClient.readContract({
       address: L2_REGISTRY_ADDRESS,
@@ -138,14 +189,14 @@ async function resolveAndSign(name: Hex, data: Hex): Promise<Hex> {
   ])
   console.log(`[GW] Signing response...`)
 
-  const domainSeparator = keccak256(toHex('L2CCIPResolver(uint64,bytes,bytes)'))
+  const domainSeparator = keccak256(toHex('L2CCIPResolver(address,uint64,bytes,bytes)'))
   const structTypeHash = keccak256(
-    toHex('resolve(uint64 expires,bytes request,bytes result)'),
+    toHex('resolve(address resolver,uint64 expires,bytes request,bytes result)'),
   )
   const structHash = keccak256(
     encodeAbiParameters(
-      parseAbiParameters('bytes32, uint64, bytes32, bytes32'),
-      [structTypeHash, expires, keccak256(request), keccak256(resultData)],
+      parseAbiParameters('bytes32, address, uint64, bytes32, bytes32'),
+      [structTypeHash, sender, expires, keccak256(request), keccak256(resultData)],
     ),
   )
   const messageHash = keccak256(concat(['0x1901', domainSeparator, structHash]))
@@ -174,15 +225,18 @@ export default async (req: Request) => {
   }
 
   try {
+    let sender: Hex | null = null
     let offchainLookupData: Hex | null = null
 
     if (req.method === 'POST') {
       const body = await req.json()
+      sender = body.sender
       offchainLookupData = body.data
     } else {
       const url = new URL(req.url)
       const pathParts = url.pathname.split('/').filter((p) => p) // -> ['', 'sender', 'data'] -> ['sender', 'data']
       if (pathParts.length >= 2) {
+        sender = pathParts[0] as Hex
         const data = pathParts[1].startsWith('0x')
           ? pathParts[1]
           : `0x${pathParts[1]}`
@@ -190,9 +244,9 @@ export default async (req: Request) => {
       }
     }
 
-    if (!offchainLookupData) {
+    if (!offchainLookupData || !sender) {
       return Response.json(
-        { message: 'Missing "data" in request' },
+        { message: 'Missing sender or data in request' },
         { status: 400, headers },
       )
     }
@@ -203,7 +257,7 @@ export default async (req: Request) => {
     })
     const [name, innerData] = args
 
-    const signedResult = await resolveAndSign(name, innerData)
+    const signedResult = await resolveAndSign(sender, name, innerData)
 
     return Response.json({ data: signedResult }, { headers })
   } catch (error) {

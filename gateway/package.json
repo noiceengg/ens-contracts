@@ -2,10 +2,11 @@
   "name": "ens-l2-gateway",
   "version": "1.0.0",
   "description": "CCIP Read gateway for ENS L2 subdomain resolution",
-  "main": "server.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node dist/index.js",
+    "build": "bun build ./index.ts --outdir ./dist --target node",
+    "dev": "nodemon --watch './**/*.ts' --exec 'bun run build && bun run start'",
     "test": "jest"
   },
   "keywords": [
@@ -19,12 +20,10 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "@ensdomains/ccip-read-router": "^0.0.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^5.1.0",
-    "itty-router": "^5.0.18",
-    "viem": "^2.31.7"
+    "viem": "^2.16.1"
   },
   "devDependencies": {
     "@types/bun": "^1.2.18",

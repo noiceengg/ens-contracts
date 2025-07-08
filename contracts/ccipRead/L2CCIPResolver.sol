@@ -5,6 +5,7 @@ import "./EIP3668.sol";
 import "../resolvers/profiles/IExtendedResolver.sol";
 import "../resolvers/profiles/IAddrResolver.sol";
 import "../resolvers/profiles/ITextResolver.sol";
+import "../resolvers/profiles/IContentHashResolver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -101,12 +102,13 @@ contract L2CCIPResolver is Ownable, ERC165, IExtendedResolver {
             keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    keccak256("L2CCIPResolver(uint64,bytes,bytes)"),
+                    keccak256("L2CCIPResolver(address,uint64,bytes,bytes)"),
                     keccak256(
                         abi.encode(
                             keccak256(
-                                "resolve(uint64 expires,bytes request,bytes result)"
+                                "resolve(address resolver,uint64 expires,bytes request,bytes result)"
                             ),
+                            address(this),
                             expires,
                             keccak256(request),
                             keccak256(result)
@@ -115,6 +117,12 @@ contract L2CCIPResolver is Ownable, ERC165, IExtendedResolver {
                 )
             );
     }
+
+    /**
+     * @dev The new ENS name wrapper now requires this function.
+     * It is a no-op for this resolver because all records are off-chain.
+     */
+    function setApprovalForAll(address, bool) external pure {}
 
     /**
      * @dev See {IERC165-supportsInterface}.
@@ -126,6 +134,8 @@ contract L2CCIPResolver is Ownable, ERC165, IExtendedResolver {
             interfaceId == type(IExtendedResolver).interfaceId ||
             interfaceId == type(IAddrResolver).interfaceId ||
             interfaceId == type(ITextResolver).interfaceId ||
+            interfaceId == type(IContentHashResolver).interfaceId ||
+            interfaceId == 0xa22cb47e || // setApprovalForAll(address,bool)
             super.supportsInterface(interfaceId);
     }
 

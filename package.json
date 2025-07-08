@@ -12,7 +12,7 @@
     "test:local": "bun run hh --network localhost test",
     "test:deploy": "bun ./scripts/deploy-test.ts",
     "l2:deploy": "bun run hh deploy --tags l2",
-    "gateway:run": "bun run gateway/index.ts",
+    "gateway:run": "cd gateway && bun run build && bun run start",
     "lint": "bun run hh check",
     "build": "rm -rf ./build/deploy ./build/hardhat.config.js && hardhat compile && tsc",
     "format": "prettier --write .",
@@ -56,7 +56,7 @@
     "prettier-plugin-solidity": "^1.0.0-beta.24",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
-    "viem": "2.12.0"
+    "viem": "^2.16.1"
   },
   "dependencies": {
     "@ensdomains/buffer": "^0.1.1",

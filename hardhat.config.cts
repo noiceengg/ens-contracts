@@ -33,6 +33,7 @@ if (process.env.DEPLOYER_KEY) {
   ]
 }
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY!
+const BASESCAN_API_KEY = process.env.BASESCAN_API_KEY!
 // circular dependency shared with actions
 export const archivedDeploymentPath = './deployments/archive'
 
@@ -230,7 +231,7 @@ const config = {
       mainnet: ETHERSCAN_API_KEY,
       optimismSepolia: ETHERSCAN_API_KEY,
       baseSepolia: ETHERSCAN_API_KEY,
-      base: ETHERSCAN_API_KEY,
+      base: BASESCAN_API_KEY,
       arbitrumSepolia: ETHERSCAN_API_KEY,
     },
     customChains: [

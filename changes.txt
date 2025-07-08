@@ -3,8 +3,8 @@
 # This contract manages subdomain registrations on L2.
 bun hh --network base deploy --tags L2SubdomainRegistry
 
-L2SubdomainRegistry deployed to 0x0baDFD4F1967aE53b8CE1EdBa8C3A852bb2a41bb on base
-   (Set L2_REGISTRY_ADDRESS=0x0baDFD4F1967aE53b8CE1EdBa8C3A852bb2a41bb in your .env file)
+L2SubdomainRegistry deployed to 0x2354C8da1390411Fb11F448B697f7A25A51d770c on base
+   (Set L2_REGISTRY_ADDRESS=0x2354C8da1390411Fb11F448B697f7A25A51d770c in your .env file)
 
 2. Deploy L1 CCIP Read Resolver
 This contract sits on L1 and points clients to your off-chain gateway.
@@ -21,9 +21,12 @@ Go to app.ens.domains and set the resolver for your (Edit Profile â†’ Advanced â
 
 5: Register a New Subdomain
 # ---------------------------------
-bun hh --network baseSepolia run scripts/register-new-subdomain.ts
+bun hh --network base run scripts/register-new-subdomain.ts
 
 6: Test Resolution
 # -----------------------
 test new subdomain (e.g., alice.yourdomain.eth) should now resolve correctly
 
+
+
+- Address does not support ContentHashResolver interface
